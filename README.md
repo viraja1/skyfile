@@ -4,6 +4,8 @@ SkyFile is a command line utility to upload and get files from Sia Skynet.
 It also allows you to assign a Handshake domain name to an uploaded file. 
 You can then fetch the file from Sia Skynet using the Handshake domain name.
 
+## Demo Video
+https://www.youtube.com/watch?v=rdlz3DugcdY
 
 ## Getting Started
 
