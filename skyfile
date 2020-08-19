@@ -1,0 +1,36 @@
+#!/bin/bash
+
+COMMAND_NAME=$1
+FILE_NAME=$2
+SHORT_NAME=$3
+SHORT_NAME=${SHORT_NAME:-NA}
+NAMEBASE_API_KEY=${NAMEBASE_API_KEY:-NA}
+NAMEBASE_SECRET_KEY=${NAMEBASE_SECRET_KEY:-NA}
+NAMEBASE_TLD=${NAMEBASE_TLD:-NA}
+
+
+if [ "$COMMAND_NAME" = "upload" ]
+then
+   OUTPUT=$(curl -X POST "https://siasky.net/skynet/skyfile" -F file="@${FILE_NAME}")
+   echo $OUTPUT
+   SKYLINK=$(echo $OUTPUT | grep -Eo '"skylink":.*?[^\\]",'  | sed -e 's/[\"\,\: ]*//g' | sed -e 's/skylink//g')
+   echo "skylink: ${SKYLINK}"
+   if [[ $NAMEBASE_API_KEY != "NA" && $NAMEBASE_SECRET_KEY != "NA" && $NAMEBASE_TLD != "NA" && $SHORT_NAME != "NA" && $SKYLINK =~ ^[a-zA-Z0-9_-]{46}$ ]]; then
+       echo "Trying to link ${SKYLINK} to ${SHORT_NAME}.${NAMEBASE_TLD}"
+       curl -XPUT "https://www.namebase.io/api/v0/dns/domains/${NAMEBASE_TLD}/nameserver"\
+       -H "Content-Type: application/json" -u "${NAMEBASE_API_KEY}:${NAMEBASE_SECRET_KEY}"\
+       -d '{"records": [{"type": "TXT", "host": "'$SHORT_NAME'", "value": "'$SKYLINK'", "ttl": 0}], "deleteRecords": []}'
+   fi
+elif [ "$COMMAND_NAME" = "get" ]
+then
+   if ! [[ $FILE_NAME =~ ^[a-zA-Z0-9_-]{46}$ ]]; then
+     OUTPUT=$(nslookup -query=TXT ${FILE_NAME} 44.231.6.183)
+     echo $OUTPUT
+     FILE_NAME=$(echo $OUTPUT | grep -oE  "[a-zA-Z0-9_-]{46}")
+     echo "skylink: ${FILE_NAME}"
+   fi
+   curl "https://siasky.net/${FILE_NAME}" -L -D "/tmp/${FILE_NAME}_headers" -O
+   ACTUAL_FILE_NAME=$(cat /tmp/${FILE_NAME}_headers | grep -Eo '"filename":.*?[^\\]",' | head -n1 | sed -e 's/[\"\,\: ]*//g' | sed -e 's/filename//g')
+   echo $ACTUAL_FILE_NAME
+   mv $FILE_NAME $ACTUAL_FILE_NAME
+fi
